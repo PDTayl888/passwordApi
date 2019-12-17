@@ -71,10 +71,10 @@ app.get('/api/checkpwned', async (req, res) => {
 app.post('/api/newpass', async (req, res) => {
   if (req.body.publicKey) {
     var encryptBool = true;
-    var toEncrypt = req.body.pasword;
+    var toEncrypt = req.body.password;
     var encryptBuffer = Buffer.from(toEncrypt);
 
-    var encrypted = publicEncrypt(publicKey, encryptBuffer);
+    var encrypted = publicEncrypt(req.body.publicKey, encryptBuffer);
     console.log('ENCRYPTED', encrypted);
   } else {
     var encryptBool = false;
@@ -82,7 +82,7 @@ app.post('/api/newpass', async (req, res) => {
 
   //////////////////////////////////////////////
   const hash = crypto.createHash('sha1');
-  hash.update('red pony');
+  hash.update(req.body.password);
   var hashedPassword = hash.digest('hex').toUpperCase();
   console.log(hashedPassword);
   var prefix = hashedPassword.slice(0, 5);
@@ -114,7 +114,6 @@ app.post('/api/newpass', async (req, res) => {
         hashFinalResult = `Found ${found.count} occurences of password breaches`;
       } else {
         hashFinalResult = 'No password breaches found';
-        dataArray.push(hashFinalResult);
       }
 
       return hashFinalResult;
@@ -138,33 +137,52 @@ app.post('/api/newpass', async (req, res) => {
     pwnedInfo: breachRes,
     encrypted: encryptBool
   };
-  console.log(req.body.passwordFor);
+  console.log('OBJ', obj);
   var success = myCache.set(`${req.body.passwordFor}`, obj, 999999999);
+  console.log('SUCCESS', success);
+  console.log('NEW PASS SUCCESS');
   res.send(success);
 });
 
 app.get('/api/passinfo', (req, res) => {
-  var value = myCache.get(req.body.passwordFor);
+  console.log('PASS INFO PASSWORDFOR', req.body.passwordFor);
+  var storeKey = req.body.passwordFor;
+  var value = myCache.get(storeKey);
   if (value == undefined) {
     console.log("CAN'T FIND IT YALLL!!!");
   } else {
+    var encrypted = value.password;
     if (value.encrypted) {
-      var decryptBuffer = Buffer.from(
-        value.password.toString('base64'),
-        'base64'
-      );
-      var decrypted = privateDecrypt(privateKey, decryptBuffer);
-      value.password = decrypted;
+      var decryptBuffer = Buffer.from(encrypted.toString('base64'), 'base64');
+      console.log(decryptBuffer);
+      var priv = req.body.privateKey.toString();
+      var decrypted = privateDecrypt(priv, decryptBuffer);
+      console.log(decrypted);
+      value.password = decrypted.toString();
     }
   }
   res.send(value);
 });
 
 app.get('/api/listpass', (req, res) => {
+  var passArray = [];
   var mykeys = myCache.keys();
-
+  mykeys.forEach(key => {
+    var pass = myCache.get(key);
+    if (pass.encrypted) {
+      var encrypted = pass.password;
+      var decryptBuffer = Buffer.from(encrypted.toString('base64'), 'base64');
+      console.log(decryptBuffer);
+      var priv = req.body.privateKey.toString();
+      var decrypted = privateDecrypt(priv, decryptBuffer);
+      console.log(decrypted);
+      pass.password = decrypted.toString();
+    }
+    passArray.push(pass);
+  });
+  console.log(passArray);
   console.log(mykeys);
-  res.send(mykeys);
+  res.send(passArray);
 });
 
 app.get('/api/strength', (req, res) => {
@@ -201,18 +219,18 @@ app.get('/api/genKeys', (req, res) => {
   var encrypted = publicEncrypt(publicKey, encryptBuffer);
 
   //print out the text and cyphertext
-  //   console.log('Text to be encrypted:');
-  //   console.log(toEncrypt);
-  //   console.log('cipherText:');
-  //   console.log(encrypted.toString());
+  console.log('Text to be encrypted:');
+  console.log(toEncrypt);
+  console.log('cipherText:');
+  console.log(encrypted.toString());
 
   //decrypt the cyphertext using the private key
   var decryptBuffer = Buffer.from(encrypted.toString('base64'), 'base64');
   var decrypted = privateDecrypt(privateKey, decryptBuffer);
 
   //print out the decrypted text
-  //   console.log('decrypted Text:');
-  //   console.log(decrypted.toString());
+  console.log('decrypted Text:');
+  console.log(decrypted.toString());
 
   var keys = {
     public: publicKey,
@@ -221,15 +239,3 @@ app.get('/api/genKeys', (req, res) => {
   console.log(keys.public);
   res.send(keys.public);
 });
-
-// {
-//     "publicKey": "MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEApVnq1OXj13054x\/cfAaK\r\nKBXudKdGMlMgAGHFfrZ49Af7j4y7+VoOSGkupL\/GSptEJSLSj\/FdhD4TTvUyKW9A\r\nWl88Q2v6zSKBs74ojOf4MX\/VQntHdOP8fgG0+q+Zc5OgEwGDqG60kj7O9XDPMvWZ\r\nNASixGs2OIHKfBucqrvhYSUSGdEVWlDVsH3R7XQ6hnN8caEiWOXUKgKK0LlGQE1O\r\nj0QGS\/GWVwmXFKeNOY\/D976xD9vINRhESDl5Gd\/21BaR6B88Pju3+609RBgo8BtQ\r\nPk5+VY4uvdXYMfdfR9paqInd4o6gXedMJQ+nczoextBEhLsQDA9T57KKygKxAj9D\r\nEyDrXXBCqdOoDc9OQXcwW2OYgdOr+BCYiv6lI\/vxekF0AazNicvdkZHaAM1oCh31\r\nZgRFNvWFuHjrzSGXYq0fZHbM3EdZAg4Sy0XhYNhA6+2tO+gpvP+VJIiyn30AVcXp\r\nm3fdtYx36RGax28wsbtP1Q2zY6H9V+yLuhe8LlMrW9z2JLHRAIHl1SFnMhD4iifF\r\n6PSGih32CbZH8LtobExSGbELZTCiuBMgC4z9DFPN7Ax7ip99ilfuTeHTKO5BWmWJ\r\nYhXYMakmt6rQsqLmlQh5L1pxyQN3zoeNmcMN7RGepF\/OO6PpTAIAI9xtUBSiDsSb\r\n4J3Nn5VRTZjXRdohHShv\/D8CAwEAAQ==",
-//    "passwordFor": "Google",
-//    "usernameOrEmail": "pdtay888",
-//    "password": "beachbumhonolulu"
-//  }
-
-// {
-//     "passwordFor": "Google",
-//     "encrypted": "true"
-//   }
