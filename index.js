@@ -169,14 +169,16 @@ app.get('/api/listpass', (req, res) => {
   var mykeys = myCache.keys();
   mykeys.forEach(key => {
     var pass = myCache.get(key);
-    if (pass.encrypted) {
-      var encrypted = pass.password;
-      var decryptBuffer = Buffer.from(encrypted.toString('base64'), 'base64');
-      console.log(decryptBuffer);
-      var priv = req.body.privateKey.toString();
-      var decrypted = privateDecrypt(priv, decryptBuffer);
-      console.log(decrypted);
-      pass.password = decrypted.toString();
+    if (req.body.privateKey) {
+      if (pass.encrypted) {
+        var encrypted = pass.password;
+        var decryptBuffer = Buffer.from(encrypted.toString('base64'), 'base64');
+        console.log(decryptBuffer);
+        var priv = req.body.privateKey.toString();
+        var decrypted = privateDecrypt(priv, decryptBuffer);
+        console.log(decrypted);
+        pass.password = decrypted.toString();
+      }
     }
     passArray.push(pass);
   });
