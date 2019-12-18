@@ -19,50 +19,6 @@ const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Listening on port ${port}...`));
 
 //////////////////////////////////////////////////////////////////////////
-// CHECK PWNED FOR PASSWORD BREACHES********
-
-app.get('/api/checkpwned', async (req, res) => {
-  const hash = crypto.createHash('sha1');
-  hash.update(req.query.password);
-  var hashedPassword = hash.digest('hex').toUpperCase();
-  var prefix = hashedPassword.slice(0, 5);
-  var pwnedApi = `https://api.pwnedpasswords.com/range/${prefix}`;
-
-  var fullListOfHashes = '';
-  var hashFinalResult = '';
-
-  function getHashMatches() {
-    return axios.get(pwnedApi);
-  }
-
-  var breachRes = await getHashMatches()
-    .then(response => {
-      fullListOfHashes = response.data;
-    })
-    .then(response => {
-      var res = fullListOfHashes.split('\r\n').map(h => {
-        var splitAtColon = h.split(':');
-        return {
-          hash: prefix + splitAtColon[0],
-          count: parseInt(splitAtColon[1])
-        };
-      });
-
-      var found = res.find(h => h.hash === hashedPassword);
-      if (found) {
-        hashFinalResult = `Found ${found.count} occurences of password breaches`;
-      } else {
-        hashFinalResult = 'No password breaches found';
-        dataArray.push(hashFinalResult);
-      }
-
-      return hashFinalResult;
-    })
-    .catch(error => {
-      console.log(error);
-    });
-  res.send(breachRes);
-});
 
 // STORE NEW PASSWORD INFO ***********
 
@@ -199,6 +155,51 @@ app.get('/api/strength', (req, res) => {
     crackTimes: crackTimes
   };
   res.send(200, strength);
+});
+
+// CHECK PWNED FOR PASSWORD BREACHES********
+
+app.get('/api/checkpwned', async (req, res) => {
+  const hash = crypto.createHash('sha1');
+  hash.update(req.query.password);
+  var hashedPassword = hash.digest('hex').toUpperCase();
+  var prefix = hashedPassword.slice(0, 5);
+  var pwnedApi = `https://api.pwnedpasswords.com/range/${prefix}`;
+
+  var fullListOfHashes = '';
+  var hashFinalResult = '';
+
+  function getHashMatches() {
+    return axios.get(pwnedApi);
+  }
+
+  var breachRes = await getHashMatches()
+    .then(response => {
+      fullListOfHashes = response.data;
+    })
+    .then(response => {
+      var res = fullListOfHashes.split('\r\n').map(h => {
+        var splitAtColon = h.split(':');
+        return {
+          hash: prefix + splitAtColon[0],
+          count: parseInt(splitAtColon[1])
+        };
+      });
+
+      var found = res.find(h => h.hash === hashedPassword);
+      if (found) {
+        hashFinalResult = `Found ${found.count} occurences of password breaches`;
+      } else {
+        hashFinalResult = 'No password breaches found';
+        dataArray.push(hashFinalResult);
+      }
+
+      return hashFinalResult;
+    })
+    .catch(error => {
+      console.log(error);
+    });
+  res.send(breachRes);
 });
 
 // GENERATE PUBLIC/PRIVATE KEYS*********
