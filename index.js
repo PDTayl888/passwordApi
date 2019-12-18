@@ -23,7 +23,7 @@ app.listen(port, () => console.log(`Listening on port ${port}...`));
 
 app.get('/api/checkpwned', async (req, res) => {
   const hash = crypto.createHash('sha1');
-  hash.update(req.body.password);
+  hash.update(req.query.password);
   var hashedPassword = hash.digest('hex').toUpperCase();
   var prefix = hashedPassword.slice(0, 5);
   var pwnedApi = `https://api.pwnedpasswords.com/range/${prefix}`;
